@@ -1,0 +1,58 @@
+// Copyright (c) 2015, the Dart project authors.  Please see the AUTHORS file
+// for details. All rights reserved. Use of this source code is governed by a
+// BSD-style license that can be found in the LICENSE file.
+@TestOn('browser')
+library polymer_elements.test.google_map_markers_add_remove_test;
+
+import 'dart:async';
+import 'package:polymer_elements/google_map.dart';
+import 'package:polymer_interop/polymer_interop.dart';
+import 'package:test/test.dart';
+import 'package:web_components/web_components.dart';
+import 'common.dart';
+
+main() async {
+  await initWebComponents();
+
+  GoogleMap map;
+
+  group('markers', () {
+    setUp(() {
+      map = fixture('map1');
+    });
+
+    test('markers are defined, added, removed', () {
+      var done = new Completer();
+      onReady(map, (e) {
+        // Check if marker children were setup and can be added/removed.
+        expect(map.markers.length, 2);
+
+        var marker = map.markers[0];
+        Polymer.dom((Polymer.dom(marker).parentNode)).removeChild(marker);
+        PolymerDom.flush();
+        wait(1).then((_) {
+          // needed because map.updateMarkers has mutationObserver
+          expect(map.markers.length, 1);
+          expect(marker.marker['map'], isNull,
+              reason: 'removed marker is still visible on map');
+          Polymer.dom(map).append(marker);
+          PolymerDom.flush();
+          wait(1).then((_) {
+            expect(marker.marker['map'], isNotNull,
+                reason: 're-added marker is not visible.');
+            done.complete();
+          });
+        });
+      });
+      return done.future;
+    });
+  });
+}
+
+onReady(GoogleMap map, Function fn) {
+  if (map.map != null) {
+    fn();
+  } else {
+    map.on['google-map-ready'].take(1).listen(fn);
+  }
+}
